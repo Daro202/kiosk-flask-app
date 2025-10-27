@@ -45,7 +45,7 @@ b) Przejdź do katalogu aplikacji:
    > cd C:\firmowy-kiosk
    
 c) Zainstaluj wymagane biblioteki:
-   > pip install flask waitress pandas
+   > pip install flask waitress pandas openpyxl
 
 KROK 4: Konfiguracja zmiennych środowiskowych (WAŻNE!)
 ------------------------------------------------------
@@ -112,7 +112,7 @@ $ sudo apt install python3 python3-pip -y
 KROK 3: Instalacja zależności
 ------------------------------
 $ cd /home/pi/firmowy-kiosk
-$ pip3 install flask waitress pandas
+$ pip3 install flask waitress pandas openpyxl
 
 KROK 4: Konfiguracja zmiennych środowiskowych (WAŻNE!)
 -------------------------------------------------------
@@ -190,12 +190,31 @@ Domyślny PIN: 7456
 
 📊 Dodawanie danych do wykresów
 --------------------------------
-Edytuj plik data.csv w formacie:
+Aplikacja obsługuje dwa formaty danych:
+
+OPCJA 1: Plik Excel (.xlsx) - ZALECANE
+---------------------------------------
+Umieść plik data.xlsx w głównym katalogu aplikacji.
+Format arkusza:
+
+| miesiąc  | produkcja | innowacje | efektywność |
+|----------|-----------|-----------|-------------|
+| Styczeń  | 120       | 5         | 85          |
+| Luty     | 135       | 7         | 88          |
+| ...      | ...       | ...       | ...         |
+
+⚠️ Aplikacja automatycznie wczyta pierwszy arkusz z pliku Excel.
+
+OPCJA 2: Plik CSV (data.csv)
+-----------------------------
+Jeśli nie ma pliku Excel, aplikacja użyje pliku CSV:
 
 miesiąc,produkcja,innowacje,efektywność
 Styczeń,120,5,85
 Luty,135,7,88
 ...
+
+PRIORYTET: Excel (data.xlsx) > CSV (data.csv) > Dane przykładowe
 
 📸 Dodawanie zdjęć
 ------------------
@@ -278,9 +297,10 @@ $ sudo ufw allow 5000/tcp
 
 ❌ Problem: Wykresy się nie wyświetlają
 ---------------------------------------
-✓ Sprawdź plik data.csv - poprawny format?
+✓ Sprawdź czy istnieje plik data.xlsx lub data.csv - poprawny format?
 ✓ Otwórz konsolę przeglądarki (F12) i szukaj błędów
 ✓ Sprawdź połączenie internetowe (Chart.js z CDN)
+✓ Upewnij się, że biblioteka openpyxl jest zainstalowana (pip list | grep openpyxl)
 
 ❌ Problem: Zdjęcia nie się ładują
 ----------------------------------

@@ -125,18 +125,26 @@ def load_config():
         return {'admin_pin': '7456', 'rotation_interval': 30, 'refresh_interval': 300}
 
 def get_chart_data():
-    """Wczytaj dane z pliku CSV dla wykresów"""
+    """Wczytaj dane z pliku Excel (.xlsx) lub CSV dla wykresów"""
     try:
-        df = pd.read_csv('data.csv')
-        return df.to_dict('records')
+        # Najpierw spróbuj wczytać plik Excel
+        if os.path.exists('data.xlsx'):
+            df = pd.read_excel('data.xlsx', engine='openpyxl')
+            return df.to_dict('records')
+        # Jeśli nie ma Excela, spróbuj CSV
+        elif os.path.exists('data.csv'):
+            df = pd.read_csv('data.csv')
+            return df.to_dict('records')
+        else:
+            raise FileNotFoundError
     except FileNotFoundError:
-        # Zwróć przykładowe dane jeśli plik nie istnieje
+        # Zwróć przykładowe dane jeśli żaden plik nie istnieje
         return [
-            {'miesiąc': 'Styczeń', 'produkcja': 120, 'innowacje': 5},
-            {'miesiąc': 'Luty', 'produkcja': 135, 'innowacje': 7},
-            {'miesiąc': 'Marzec', 'produkcja': 150, 'innowacje': 6},
-            {'miesiąc': 'Kwiecień', 'produkcja': 145, 'innowacje': 8},
-            {'miesiąc': 'Maj', 'produkcja': 160, 'innowacje': 10}
+            {'miesiąc': 'Styczeń', 'produkcja': 120, 'innowacje': 5, 'efektywność': 85},
+            {'miesiąc': 'Luty', 'produkcja': 135, 'innowacje': 7, 'efektywność': 88},
+            {'miesiąc': 'Marzec', 'produkcja': 150, 'innowacje': 6, 'efektywność': 90},
+            {'miesiąc': 'Kwiecień', 'produkcja': 145, 'innowacje': 8, 'efektywność': 87},
+            {'miesiąc': 'Maj', 'produkcja': 160, 'innowacje': 10, 'efektywność': 92}
         ]
 
 def get_slide_images():
