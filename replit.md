@@ -81,16 +81,20 @@ Aplikacja webowa Flask działająca jako firmowy kiosk do wyświetlania dashboar
 - **Natychmiastowa aktualizacja**: Zmiany widoczne od razu na dashboardzie
 
 ### 3. Wykres Średniej Prędkości (/wykres)
-- **Interaktywny wykres Plotly**: Wykres liniowy z markerami
+- **Interaktywny wykres Plotly**: Wykres kombinowany (słupki + linie) z dwiema osiami Y
 - **Dane z pliku Export.xlsx**: Arkusz 'Eksport', 'Export' lub pierwszy dostępny
-- **3 dropdowny filtrów**:
-  - Typ: Dzienne / Narastające
-  - Kod Maszyny: np. 1310, 1329
-  - Brygada: A, B, C
-- **Dynamiczna aktualizacja**: Wykres aktualizuje się po zmianie filtrów
+- **1 dropdown filtra**:
+  - Kod Maszyny: np. "1310 Martin NT 1636", "1334 Bobst DR0"
+- **Dynamiczna aktualizacja**: Wykres aktualizuje się po zmianie maszyny
 - **Oś X**: Dzień miesiąca (1-31)
-- **Oś Y**: Wartość [m2/wh]
-- **Format danych**: Typ, Kod, Brygada, kolumny 1-31 (dni miesiąca)
+- **Oś Y (lewa)**: Wartości dzienne [m2/wh] - słupki dla brygad A, B, C
+- **Oś Y (prawa)**: Wartości narastające [m2/wh] - linie dla brygad A, B, C
+- **Format danych**: Typ, Kod, Nazwa, Brygada, kolumny 1-31 (dni miesiąca)
+- **Wykres zawiera**: 
+  - Słupki grupowane (niebieskie A, pomarańczowe B, szare C) - wartości dzienne
+  - Linie z markerami (3 serie) - wartości narastające A, B, C
+  - Etykiety wartości nad słupkami
+  - Legenda pozioma na dole
 
 ### 4. API Endpoints
 - `GET /` - Strona główna
