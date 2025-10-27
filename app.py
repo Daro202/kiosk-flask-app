@@ -161,7 +161,7 @@ def get_chart_data_for_machine(kod='1310', start_day=1):
                     'type': 'bar',
                     'name': brygada,
                     'x': filtered['Dzien'].tolist(),
-                    'y': filtered['Wartosc'].tolist(),
+                    'y': [round(v, 0) for v in filtered['Wartosc'].tolist()],
                     'color': kolory_slupki.get(brygada, '#999999')
                 })
         
@@ -176,7 +176,7 @@ def get_chart_data_for_machine(kod='1310', start_day=1):
                     'type': 'line',
                     'name': f'Narastająco {brygada}',
                     'x': filtered['Dzien'].tolist(),
-                    'y': filtered['Wartosc'].tolist(),
+                    'y': [round(v, 0) for v in filtered['Wartosc'].tolist()],
                     'color': kolory_linie.get(brygada, '#666666')
                 })
         
