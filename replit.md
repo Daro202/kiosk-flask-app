@@ -10,6 +10,13 @@ Aplikacja webowa Flask działająca jako firmowy kiosk do wyświetlania dashboar
 27 października 2025
 
 ### Ostatnie zmiany
+- [2025-10-27 13:15] Dodano nową stronę /wykres z interaktywnym wykresem Plotly
+  - Wczytywanie danych z pliku Export.xlsx (arkusz Eksport/Export)
+  - Przekształcanie danych do formy długiej (long format)
+  - 3 dropdowny: Typ (Dzienne/Narastające), Kod Maszyny, Brygada (A/B/C)
+  - Interaktywny wykres liniowy z markerami
+  - API endpoint /api/series dla dynamicznej aktualizacji
+  - Biblioteka plotly zainstalowana
 - [2025-10-27 10:30] Dodano obsługę plików Excel (.xlsx) dla danych wykresów
   - Aplikacja priorytetowo wczytuje dane z data.xlsx
   - Fallback do data.csv jeśli Excel nie istnieje
@@ -26,8 +33,8 @@ Aplikacja webowa Flask działająca jako firmowy kiosk do wyświetlania dashboar
 ## Architektura Projektu
 
 ### Technologie
-- **Backend**: Python 3.11, Flask, Waitress, Pandas, openpyxl
-- **Frontend**: HTML5, Tailwind CSS, Chart.js, Vanilla JavaScript
+- **Backend**: Python 3.11, Flask, Waitress, Pandas, openpyxl, Plotly
+- **Frontend**: HTML5, Tailwind CSS, Chart.js, Plotly.js, Vanilla JavaScript
 - **Baza danych**: SQLite3
 - **Serwer produkcyjny**: Waitress
 - **Format danych**: Excel (.xlsx) lub CSV
@@ -37,12 +44,14 @@ Aplikacja webowa Flask działająca jako firmowy kiosk do wyświetlania dashboar
 .
 ├── app.py                  # Główna aplikacja Flask
 ├── config.json             # Konfiguracja (PIN, interwały)
-├── data.xlsx               # Dane wykresów (Excel) - PRIORYTET
-├── data.csv                # Dane wykresów (CSV) - FALLBACK
+├── data.xlsx               # Dane wykresów Chart.js (Excel) - PRIORYTET
+├── data.csv                # Dane wykresów Chart.js (CSV) - FALLBACK
+├── Export.xlsx             # Dane dla wykresów Plotly (arkusz: Eksport)
 ├── kiosk.db                # Baza danych SQLite (tworzona automatycznie)
 ├── templates/
 │   ├── index.html          # Dashboard główny
-│   └── admin.html          # Panel administracyjny
+│   ├── admin.html          # Panel administracyjny
+│   └── wykres.html         # Strona z wykresem Plotly
 ├── static/
 │   ├── css/
 │   │   └── style.css       # Style CSS
@@ -71,15 +80,29 @@ Aplikacja webowa Flask działająca jako firmowy kiosk do wyświetlania dashboar
 - **Upload zdjęć**: Wysyłanie obrazów do pokazu slajdów
 - **Natychmiastowa aktualizacja**: Zmiany widoczne od razu na dashboardzie
 
-### 3. API Endpoints
+### 3. Wykres Średniej Prędkości (/wykres)
+- **Interaktywny wykres Plotly**: Wykres liniowy z markerami
+- **Dane z pliku Export.xlsx**: Arkusz 'Eksport', 'Export' lub pierwszy dostępny
+- **3 dropdowny filtrów**:
+  - Typ: Dzienne / Narastające
+  - Kod Maszyny: np. 1310, 1329
+  - Brygada: A, B, C
+- **Dynamiczna aktualizacja**: Wykres aktualizuje się po zmianie filtrów
+- **Oś X**: Dzień miesiąca (1-31)
+- **Oś Y**: Wartość [m2/wh]
+- **Format danych**: Typ, Kod, Brygada, kolumny 1-31 (dni miesiąca)
+
+### 4. API Endpoints
 - `GET /` - Strona główna
 - `GET /admin` - Panel administracyjny
 - `POST /admin` - Logowanie PIN
+- `GET /wykres` - Strona z wykresem Plotly
 - `POST /api/settings` - Aktualizacja ustawień
 - `POST /api/inspiration` - Dodanie inspiracji
 - `DELETE /api/inspiration/<id>` - Usunięcie inspiracji
 - `POST /api/upload` - Upload pliku
-- `GET /api/chart-data` - Dane do wykresów
+- `GET /api/chart-data` - Dane do wykresów Chart.js
+- `GET /api/series?typ=Dzienne&kod=1310&brig=A` - Dane do wykresu Plotly
 - `GET /api/slides` - Lista zdjęć
 - `GET /api/inspirations` - Lista inspiracji
 - `GET /api/content` - Cała treść (dla auto-refresh)
