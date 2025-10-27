@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pythonlibs/
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Baza danych
+*.db
+kiosk.db
+
+# Logi
+*.log
+logs/
+
+# Uploaded images (opcjonalnie, można commitować)
+# static/images/*.jpg
+# static/images/*.png
+
+# System
+.DS_Store
+Thumbs.db
+
+# Replit
+.replit
+replit.nix

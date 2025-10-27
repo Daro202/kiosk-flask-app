@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ header_title or 'Firmowy Kiosk' }}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Własne style -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    
+    <!-- Panel boczny -->
+    <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 z-50">
+        <div class="p-6">
+            <h2 class="text-2xl font-bold text-orange-500 mb-8">Menu</h2>
+            <nav>
+                <button onclick="showSection('wykresy')" class="nav-btn w-full text-left py-4 px-4 mb-2 rounded-lg transition-all hover:bg-orange-50 dark:hover:bg-gray-700" data-section="wykresy">
+                    <span class="text-lg">📊 Wykresy</span>
+                </button>
+                <button onclick="showSection('inspiracje')" class="nav-btn w-full text-left py-4 px-4 mb-2 rounded-lg transition-all hover:bg-orange-50 dark:hover:bg-gray-700" data-section="inspiracje">
+                    <span class="text-lg">💡 Inspiracje</span>
+                </button>
+                <button onclick="showSection('zdjecia')" class="nav-btn w-full text-left py-4 px-4 mb-2 rounded-lg transition-all hover:bg-orange-50 dark:hover:bg-gray-700" data-section="zdjecia">
+                    <span class="text-lg">📸 Zdjęcia</span>
+                </button>
+                <button onclick="showSection('o-nas')" class="nav-btn w-full text-left py-4 px-4 mb-2 rounded-lg transition-all hover:bg-orange-50 dark:hover:bg-gray-700" data-section="o-nas">
+                    <span class="text-lg">ℹ️ O nas</span>
+                </button>
+            </nav>
+            
+            <!-- Przełącznik trybu ciemnego -->
+            <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                <button onclick="toggleDarkMode()" class="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-all flex items-center justify-center gap-2">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-text">Tryb ciemny</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Główna zawartość -->
+    <main class="ml-64 h-full flex flex-col transition-all duration-300">
+        
+        <!-- Nagłówek -->
+        <header class="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-8 px-12 shadow-lg">
+            <h1 id="header-title" class="text-5xl font-bold">{{ header_title or 'Dashboard Inspiracji i Wyników' }}</h1>
+            <p class="text-xl mt-2 opacity-90">Aktualizacja: <span id="current-time"></span></p>
+        </header>
+        
+        <!-- Sekcje treści -->
+        <div class="flex-1 overflow-hidden relative">
+            
+            <!-- Sekcja: Wykresy -->
+            <section id="section-wykresy" class="content-section active absolute inset-0 p-12">
+                <div class="grid grid-cols-2 gap-8 h-full">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">Produkcja miesięczna</h2>
+                        <canvas id="productionChart"></canvas>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">Liczba innowacji</h2>
+                        <canvas id="innovationChart"></canvas>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 col-span-2">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">Efektywność</h2>
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Sekcja: Inspiracje -->
+            <section id="section-inspiracje" class="content-section absolute inset-0 p-12 hidden">
+                <div id="inspirations-container" class="grid grid-cols-3 gap-8 h-full overflow-auto">
+                    <!-- Karty inspiracji będą wstawiane dynamicznie -->
+                </div>
+            </section>
+            
+            <!-- Sekcja: Zdjęcia (pokaz slajdów) -->
+            <section id="section-zdjecia" class="content-section absolute inset-0 hidden">
+                <div class="relative h-full w-full bg-black">
+                    <div id="slideshow-container" class="h-full w-full flex items-center justify-center">
+                        <img id="slideshow-image" src="" alt="Slideshow" class="max-h-full max-w-full object-contain">
+                    </div>
+                    <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+                        <div id="slideshow-dots" class="flex gap-3"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Sekcja: O nas -->
+            <section id="section-o-nas" class="content-section absolute inset-0 p-12 hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 h-full flex flex-col items-center justify-center text-center">
+                    <h2 class="text-5xl font-bold text-orange-500 mb-8">O nas</h2>
+                    <p id="about-text" class="text-2xl text-gray-700 dark:text-gray-300 max-w-4xl leading-relaxed">
+                        Nasz zespół stale poszukuje nowych rozwiązań i inspiracji.
+                    </p>
+                </div>
+            </section>
+            
+        </div>
+        
+        <!-- Stopka -->
+        <footer class="bg-gray-800 dark:bg-gray-950 text-white py-6 px-12">
+            <p id="footer-note" class="text-xl text-center">{{ footer_note or 'Stora Enso - Innowacje dla Przyszłości' }}</p>
+        </footer>
+        
+    </main>
+    
+    <!-- Animowany leniwiec -->
+    <div id="sloth-container" class="fixed bottom-8 right-8 z-40">
+        <svg width="120" height="120" viewBox="0 0 120 120" class="sloth-animation">
+            <g id="sloth">
+                <!-- Ciało leniwca -->
+                <ellipse cx="60" cy="70" rx="30" ry="35" fill="#8B7355" />
+                
+                <!-- Głowa -->
+                <circle cx="60" cy="40" r="25" fill="#A0826D" />
+                
+                <!-- Oczy -->
+                <circle cx="52" cy="38" r="4" fill="#2C1810" />
+                <circle cx="68" cy="38" r="4" fill="#2C1810" />
+                
+                <!-- Białka oczu (błyski) -->
+                <circle cx="53" cy="37" r="1.5" fill="white" />
+                <circle cx="69" cy="37" r="1.5" fill="white" />
+                
+                <!-- Nos -->
+                <ellipse cx="60" cy="48" rx="3" ry="2" fill="#2C1810" />
+                
+                <!-- Uśmiech -->
+                <path d="M 54 50 Q 60 54 66 50" stroke="#2C1810" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                
+                <!-- Łapki -->
+                <ellipse cx="40" cy="75" rx="8" ry="12" fill="#A0826D" />
+                <ellipse cx="80" cy="75" rx="8" ry="12" fill="#A0826D" />
+                
+                <!-- Paznokcie -->
+                <line x1="38" y1="85" x2="38" y2="88" stroke="#2C1810" stroke-width="1"/>
+                <line x1="42" y1="85" x2="42" y2="88" stroke="#2C1810" stroke-width="1"/>
+                <line x1="78" y1="85" x2="78" y2="88" stroke="#2C1810" stroke-width="1"/>
+                <line x1="82" y1="85" x2="82" y2="88" stroke="#2C1810" stroke-width="1"/>
+            </g>
+        </svg>
+    </div>
+    
+    <!-- Wskaźnik automatycznej rotacji -->
+    <div class="fixed top-24 right-8 bg-white dark:bg-gray-800 rounded-full shadow-lg px-6 py-3 z-40">
+        <div class="flex items-center gap-3">
+            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="text-sm font-medium dark:text-white">Auto: <span id="rotation-timer">30</span>s</span>
+        </div>
+    </div>
+    
+    <!-- Skrypty -->
+    <script src="/static/js/main.js"></script>
+    
+</body>
+</html>

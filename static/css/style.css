@@ -1,0 +1,158 @@
+/* Firmowy Kiosk - Style CSS */
+
+/* Zmienne kolorów - Stora Enso */
+:root {
+    --color-primary: #FF6B35;
+    --color-secondary: #004E89;
+    --color-light-bg: #F7F7F7;
+    --color-dark-bg: #1A1A1A;
+    --color-text-light: #333333;
+    --color-text-dark: #FFFFFF;
+}
+
+/* Tryb ciemny */
+.dark {
+    --color-text: var(--color-text-dark);
+    --color-bg: var(--color-dark-bg);
+}
+
+/* Globalne style */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Przyciski nawigacji */
+.nav-btn {
+    transition: all 0.3s ease;
+}
+
+.nav-btn.active {
+    background-color: #FF6B35;
+    color: white;
+    font-weight: 600;
+    transform: translateX(8px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.dark .nav-btn.active {
+    background-color: #FF6B35;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.5);
+}
+
+/* Sekcje treści */
+.content-section {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    pointer-events: none;
+}
+
+.content-section.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Animacja leniwca */
+.sloth-animation {
+    animation: slothFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes slothFloat {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-15px) rotate(3deg);
+    }
+}
+
+/* Animacja kart inspiracji */
+.inspiration-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.inspiration-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Slideshow */
+#slideshow-image {
+    transition: opacity 0.8s ease-in-out;
+}
+
+/* Wskaźniki slajdów */
+.slide-dot {
+    width: 12px;
+    height: 12px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.slide-dot.active {
+    background-color: #FF6B35;
+    width: 32px;
+    border-radius: 6px;
+}
+
+/* Responsywność */
+@media (max-width: 1024px) {
+    #sidebar {
+        width: 200px;
+    }
+    
+    main {
+        margin-left: 200px;
+    }
+}
+
+/* Wykresy */
+canvas {
+    max-height: 400px;
+}
+
+/* Animacje wejścia */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* Scrollbar dla sekcji z overflow */
+.overflow-auto::-webkit-scrollbar {
+    width: 8px;
+}
+
+.overflow-auto::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb {
+    background: #FF6B35;
+    border-radius: 10px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb:hover {
+    background: #E55A2B;
+}
+
+/* Tryb kiosk - ukryj kursor po 5 sekundach bezczynności */
+body.kiosk-mode {
+    cursor: none;
+}
+
+body.kiosk-mode * {
+    cursor: none !important;
+}

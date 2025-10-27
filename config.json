@@ -1,0 +1,13 @@
+{
+  "admin_pin": "7456",
+  "rotation_interval": 30,
+  "refresh_interval": 300,
+  "app_name": "Firmowy Kiosk",
+  "company": "Stora Enso",
+  "theme": {
+    "primary_color": "#FF6B35",
+    "secondary_color": "#004E89",
+    "light_bg": "#F7F7F7",
+    "dark_bg": "#1A1A1A"
+  }
+}
