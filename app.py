@@ -165,7 +165,7 @@ def get_slide_images():
 def load_long():
     """
     Wczytaj dane z pliku Export.xlsx i przekształć do formy długiej (long format)
-    Format: Typ, Kod, Brygada, Dzien (1-31), Wartosc
+    Format: Typ, Kod, Nazwa, Brygada, Dzien (1-31), Wartosc
     """
     try:
         # Spróbuj wczytać arkusz 'Eksport', 'Export' lub pierwszy dostępny
@@ -178,12 +178,24 @@ def load_long():
                 # Jeśli żaden nie istnieje, wczytaj pierwszy arkusz
                 df = pd.read_excel('Export.xlsx', sheet_name=0, engine='openpyxl')
         
-        # Standaryzuj nazwy pierwszych trzech kolumn
-        df.columns = ['Typ', 'Kod', 'Brygada'] + list(df.columns[3:])
+        # Sprawdź czy istnieje kolumna Nazwa
+        has_nazwa = 'Nazwa' in df.columns or len(df.columns) >= 4
         
-        # Przekształć nagłówki dni (kolumny 4+) na int
+        if has_nazwa and len(df.columns) >= 4:
+            # Standaryzuj nazwy pierwszych czterech kolumn
+            df.columns = ['Typ', 'Kod', 'Nazwa', 'Brygada'] + list(df.columns[4:])
+            first_day_col = 4
+            id_vars = ['Typ', 'Kod', 'Nazwa', 'Brygada']
+        else:
+            # Stary format bez nazwy
+            df.columns = ['Typ', 'Kod', 'Brygada'] + list(df.columns[3:])
+            df['Nazwa'] = ''  # Dodaj pustą kolumnę Nazwa
+            first_day_col = 3
+            id_vars = ['Typ', 'Kod', 'Nazwa', 'Brygada']
+        
+        # Przekształć nagłówki dni (kolumny od first_day_col+) na int
         day_cols = []
-        for col in df.columns[3:]:
+        for col in df.columns[first_day_col:]:
             try:
                 day_cols.append(int(col))
             except (ValueError, TypeError):
@@ -191,12 +203,12 @@ def load_long():
                 pass
         
         # Wybierz tylko kolumny podstawowe + dni jako int
-        valid_cols = ['Typ', 'Kod', 'Brygada'] + [c for c in df.columns[3:] if c in day_cols or str(c).isdigit()]
+        valid_cols = id_vars + [c for c in df.columns[first_day_col:] if c in day_cols or str(c).isdigit()]
         df = df[valid_cols]
         
         # Zmień nazwy kolumn dni na int
         col_rename = {}
-        for col in df.columns[3:]:
+        for col in df.columns[first_day_col:]:
             try:
                 col_rename[col] = int(col)
             except (ValueError, TypeError):
@@ -204,7 +216,6 @@ def load_long():
         df.rename(columns=col_rename, inplace=True)
         
         # Przekształć do formy długiej (melt)
-        id_vars = ['Typ', 'Kod', 'Brygada']
         value_vars = [col for col in df.columns if isinstance(col, int) and 1 <= col <= 31]
         
         df_long = pd.melt(
@@ -221,6 +232,7 @@ def load_long():
         # Konwertuj typy
         df_long['Typ'] = df_long['Typ'].astype(str)
         df_long['Kod'] = df_long['Kod'].astype(str)
+        df_long['Nazwa'] = df_long['Nazwa'].astype(str)
         df_long['Brygada'] = df_long['Brygada'].astype(str)
         df_long['Dzien'] = df_long['Dzien'].astype(int)
         df_long['Wartosc'] = df_long['Wartosc'].astype(float)
@@ -229,10 +241,10 @@ def load_long():
     
     except FileNotFoundError:
         # Jeśli plik nie istnieje, zwróć pusty DataFrame
-        return pd.DataFrame(columns=['Typ', 'Kod', 'Brygada', 'Dzien', 'Wartosc'])
+        return pd.DataFrame(columns=['Typ', 'Kod', 'Nazwa', 'Brygada', 'Dzien', 'Wartosc'])
     except Exception as e:
         print(f"Błąd wczytywania danych z Export.xlsx: {e}")
-        return pd.DataFrame(columns=['Typ', 'Kod', 'Brygada', 'Dzien', 'Wartosc'])
+        return pd.DataFrame(columns=['Typ', 'Kod', 'Nazwa', 'Brygada', 'Dzien', 'Wartosc'])
 
 # ==================== TRASY (ROUTES) ====================
 
@@ -397,103 +409,170 @@ def get_content():
 
 @app.route('/wykres')
 def wykres():
-    """Strona z interaktywnym wykresem Plotly"""
+    """Strona z interaktywnym wykresem Plotly - wykres kombinowany (słupki + linie)"""
     import plotly.graph_objects as go
     from plotly.offline import plot
     
     df_long = load_long()
     
-    # Pobierz unikalne wartości dla dropdownów
+    # Pobierz unikalne wartości dla dropdown maszyn
     if not df_long.empty:
-        typy = sorted(df_long['Typ'].unique().tolist())
-        kody = sorted(df_long['Kod'].unique().tolist(), key=lambda x: int(x) if x.isdigit() else x)
-        brygady = sorted(df_long['Brygada'].unique().tolist())
+        # Utwórz listę maszyn (kod + nazwa)
+        maszyny_df = df_long[['Kod', 'Nazwa']].drop_duplicates().sort_values('Kod')
+        maszyny = []
+        for _, row in maszyny_df.iterrows():
+            kod = row['Kod']
+            nazwa = row['Nazwa']
+            if nazwa and nazwa.strip():
+                maszyny.append({'kod': kod, 'label': f"{kod} {nazwa}"})
+            else:
+                maszyny.append({'kod': kod, 'label': kod})
         
-        # Domyślne wartości
-        default_typ = typy[0] if typy else 'Dzienne'
-        default_kod = kody[0] if kody else ''
-        default_brygada = 'A' if 'A' in brygady else (brygady[0] if brygady else 'A')
+        # Domyślna maszyna
+        default_kod = maszyny[0]['kod'] if maszyny else ''
+        default_nazwa = maszyny[0]['label'] if maszyny else ''
         
-        # Wygeneruj początkowy wykres
-        mask = (df_long['Typ'] == default_typ) & (df_long['Kod'] == default_kod) & (df_long['Brygada'] == default_brygada)
-        filtered = df_long[mask].copy().sort_values('Dzien')
-        
+        # Wygeneruj początkowy wykres kombinowany
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=filtered['Dzien'].tolist(),
-            y=filtered['Wartosc'].tolist(),
-            mode='lines+markers',
-            name=f'{default_typ} - {default_kod} - {default_brygada}',
-            line=dict(color='#FF6B35', width=3),
-            marker=dict(color='#FF6B35', size=8)
-        ))
+        
+        # Kolory dla brygad (słupki)
+        kolory_slupki = {'A': '#0ea5e9', 'B': '#FF6B35', 'C': '#6b7280'}  # niebieski, pomarańczowy, szary
+        kolory_linie = {'A': '#0284c7', 'B': '#f97316', 'C': '#4b5563'}  # ciemniejsze odcienie
+        
+        # Dodaj słupki dla wartości dziennych (brygady A, B, C)
+        for brygada in ['A', 'B', 'C']:
+            mask = (df_long['Typ'] == 'Dzienne') & (df_long['Kod'] == default_kod) & (df_long['Brygada'] == brygada)
+            filtered = df_long[mask].copy().sort_values('Dzien')
+            
+            if not filtered.empty:
+                fig.add_trace(go.Bar(
+                    x=filtered['Dzien'].tolist(),
+                    y=filtered['Wartosc'].tolist(),
+                    name=brygada,
+                    marker_color=kolory_slupki.get(brygada, '#999999'),
+                    text=filtered['Wartosc'].tolist(),
+                    textposition='outside',
+                    texttemplate='%{text:.0f}'
+                ))
+        
+        # Dodaj linie dla wartości narastających (brygady A, B, C)
+        for brygada in ['A', 'B', 'C']:
+            mask = (df_long['Typ'] == 'Narastające') & (df_long['Kod'] == default_kod) & (df_long['Brygada'] == brygada)
+            filtered = df_long[mask].copy().sort_values('Dzien')
+            
+            if not filtered.empty:
+                fig.add_trace(go.Scatter(
+                    x=filtered['Dzien'].tolist(),
+                    y=filtered['Wartosc'].tolist(),
+                    mode='lines+markers',
+                    name=f'Narastająco {brygada}',
+                    line=dict(color=kolory_linie.get(brygada, '#666666'), width=2),
+                    marker=dict(color=kolory_linie.get(brygada, '#666666'), size=6)
+                ))
+        
+        # Dodaj linie Cel 0 i Cel 100 (opcjonalnie)
+        # Na razie pominięte - można dodać później jeśli potrzebne
         
         fig.update_layout(
-            title=f'Średnia prędkość – {default_typ}, Kod {default_kod}, Brygada {default_brygada}',
-            xaxis_title='Dzień miesiąca',
-            yaxis_title='Wartość [m2/wh]',
-            hovermode='closest',
-            plot_bgcolor='#f9fafb',
-            paper_bgcolor='white'
+            title=default_nazwa,
+            xaxis_title='',
+            yaxis_title='',
+            hovermode='x unified',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            barmode='group',
+            showlegend=True,
+            legend=dict(
+                orientation='h',
+                yanchor='bottom',
+                y=-0.2,
+                xanchor='center',
+                x=0.5
+            ),
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='#e5e7eb',
+                dtick=1
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='#e5e7eb'
+            )
         )
         
         # Generuj HTML wykresu z w pełni osadzoną biblioteką Plotly (inline)
         plot_html = plot(fig, output_type='div', include_plotlyjs=True)
         
     else:
-        typy = ['Dzienne', 'Narastające']
-        kody = []
-        brygady = ['A', 'B', 'C']
-        default_typ = 'Dzienne'
+        maszyny = []
         default_kod = ''
-        default_brygada = 'A'
+        default_nazwa = ''
         plot_html = '<div class="text-center text-gray-600 p-8">Brak danych - proszę dodać plik Export.xlsx</div>'
     
     return render_template('wykres.html',
-                         typy=typy,
-                         kody=kody,
-                         brygady=brygady,
-                         default_typ=default_typ,
+                         maszyny=maszyny,
                          default_kod=default_kod,
-                         default_brygada=default_brygada,
+                         default_nazwa=default_nazwa,
                          plot_html=plot_html)
 
 @app.route('/api/series')
 def api_series():
-    """Zwróć dane serii dla wykresu w formacie JSON"""
-    # Pobierz parametry z query string
-    typ = request.args.get('typ', 'Dzienne')
+    """Zwróć dane wszystkich serii dla wykresu kombinowanego w formacie JSON"""
+    # Pobierz kod maszyny z query string
     kod = request.args.get('kod', '')
-    brig = request.args.get('brig', 'A')
     
     df_long = load_long()
     
-    if df_long.empty:
+    if df_long.empty or not kod:
         return jsonify({
-            'x': [],
-            'y': [],
-            'typ': typ,
+            'series': [],
             'kod': kod,
-            'brig': brig
+            'nazwa': ''
         })
     
-    # Filtruj dane
-    mask = (df_long['Typ'] == typ) & (df_long['Kod'] == kod) & (df_long['Brygada'] == brig)
-    filtered = df_long[mask].copy()
+    # Pobierz nazwę maszyny
+    maszyna_df = df_long[df_long['Kod'] == kod][['Nazwa']].drop_duplicates()
+    nazwa = maszyna_df.iloc[0]['Nazwa'] if not maszyna_df.empty else ''
     
-    # Sortuj po dniu
-    filtered = filtered.sort_values('Dzien')
+    # Przygotuj dane dla wszystkich serii
+    series_data = []
     
-    # Przygotuj dane do zwrócenia
-    x = filtered['Dzien'].tolist()
-    y = filtered['Wartosc'].tolist()
+    # Kolory dla brygad
+    kolory_slupki = {'A': '#0ea5e9', 'B': '#FF6B35', 'C': '#6b7280'}
+    kolory_linie = {'A': '#0284c7', 'B': '#f97316', 'C': '#4b5563'}
+    
+    # Słupki dla wartości dziennych (brygady A, B, C)
+    for brygada in ['A', 'B', 'C']:
+        mask = (df_long['Typ'] == 'Dzienne') & (df_long['Kod'] == kod) & (df_long['Brygada'] == brygada)
+        filtered = df_long[mask].copy().sort_values('Dzien')
+        
+        if not filtered.empty:
+            series_data.append({
+                'type': 'bar',
+                'name': brygada,
+                'x': filtered['Dzien'].tolist(),
+                'y': filtered['Wartosc'].tolist(),
+                'color': kolory_slupki.get(brygada, '#999999')
+            })
+    
+    # Linie dla wartości narastających (brygady A, B, C)
+    for brygada in ['A', 'B', 'C']:
+        mask = (df_long['Typ'] == 'Narastające') & (df_long['Kod'] == kod) & (df_long['Brygada'] == brygada)
+        filtered = df_long[mask].copy().sort_values('Dzien')
+        
+        if not filtered.empty:
+            series_data.append({
+                'type': 'line',
+                'name': f'Narastająco {brygada}',
+                'x': filtered['Dzien'].tolist(),
+                'y': filtered['Wartosc'].tolist(),
+                'color': kolory_linie.get(brygada, '#666666')
+            })
     
     return jsonify({
-        'x': x,
-        'y': y,
-        'typ': typ,
+        'series': series_data,
         'kod': kod,
-        'brig': brig
+        'nazwa': nazwa
     })
 
 # ==================== URUCHOMIENIE APLIKACJI ====================

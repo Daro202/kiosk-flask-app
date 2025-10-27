@@ -8,24 +8,6 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Plotly.js - Self-hosted fallback -->
-    <script>
-    // Plotly basic minimal implementation fallback
-    window.PlotlyConfig = {MathJaxConfig: 'local'};
-    </script>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" onerror="loadPlotlyFallback()"></script>
-    <script>
-    function loadPlotlyFallback() {
-        // Jeśli CDN nie działa, załaduj z alternatywnego źródła
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js';
-        script.onerror = function() {
-            console.error('Nie można załadować Plotly z żadnego CDN');
-        };
-        document.head.appendChild(script);
-    }
-    </script>
-    
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -42,47 +24,17 @@
         
         <!-- Filtry -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Dropdown Typ -->
+            <div class="max-w-md">
+                <!-- Dropdown Maszyna -->
                 <div>
-                    <label for="typ-select" class="block text-sm font-medium text-gray-700 mb-2">
-                        Typ
-                    </label>
-                    <select id="typ-select" 
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                        {% for t in typy %}
-                        <option value="{{ t }}" {% if t == default_typ %}selected{% endif %}>
-                            {{ t }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <!-- Dropdown Kod -->
-                <div>
-                    <label for="kod-select" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="maszyna-select" class="block text-sm font-medium text-gray-700 mb-2">
                         Kod Maszyny
                     </label>
-                    <select id="kod-select" 
+                    <select id="maszyna-select" 
                             class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                        {% for k in kody %}
-                        <option value="{{ k }}" {% if k == default_kod %}selected{% endif %}>
-                            {{ k }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <!-- Dropdown Brygada -->
-                <div>
-                    <label for="brygada-select" class="block text-sm font-medium text-gray-700 mb-2">
-                        Brygada
-                    </label>
-                    <select id="brygada-select" 
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                        {% for b in brygady %}
-                        <option value="{{ b }}" {% if b == default_brygada %}selected{% endif %}>
-                            {{ b }}
+                        {% for m in maszyny %}
+                        <option value="{{ m.kod }}" {% if m.kod == default_kod %}selected{% endif %}>
+                            {{ m.label }}
                         </option>
                         {% endfor %}
                     </select>
@@ -107,20 +59,21 @@
     
     <script>
         // Pobierz elementy
-        const typSelect = document.getElementById('typ-select');
-        const kodSelect = document.getElementById('kod-select');
-        const brygadaSelect = document.getElementById('brygada-select');
+        const maszynaSelect = document.getElementById('maszyna-select');
         const chartDiv = document.getElementById('chart');
         
         // Funkcja aktualizująca wykres
         async function updateChart() {
-            const typ = typSelect.value;
-            const kod = kodSelect.value;
-            const brig = brygadaSelect.value;
+            const kod = maszynaSelect.value;
+            
+            if (!kod) {
+                console.log('Brak kodu maszyny');
+                return;
+            }
             
             try {
                 // Pobierz dane z API
-                const response = await fetch(`/api/series?typ=${encodeURIComponent(typ)}&kod=${encodeURIComponent(kod)}&brig=${encodeURIComponent(brig)}`);
+                const response = await fetch(`/api/series?kod=${encodeURIComponent(kod)}`);
                 const data = await response.json();
                 
                 // Sprawdź czy Plotly jest załadowany
@@ -129,49 +82,78 @@
                     const plotlyDiv = chartDiv.querySelector('.plotly-graph-div') || chartDiv;
                     
                     // Przygotuj dane dla Plotly
-                    const trace = {
-                        x: data.x,
-                        y: data.y,
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        name: `${typ} - ${kod} - ${brig}`,
-                        line: {
-                            color: '#FF6B35',
-                            width: 3
-                        },
-                        marker: {
-                            color: '#FF6B35',
-                            size: 8
+                    const traces = [];
+                    
+                    // Dodaj każdą serię z API
+                    for (const serie of data.series) {
+                        if (serie.type === 'bar') {
+                            traces.push({
+                                x: serie.x,
+                                y: serie.y,
+                                type: 'bar',
+                                name: serie.name,
+                                marker: {
+                                    color: serie.color
+                                },
+                                text: serie.y,
+                                textposition: 'outside',
+                                texttemplate: '%{text:.0f}'
+                            });
+                        } else if (serie.type === 'line') {
+                            traces.push({
+                                x: serie.x,
+                                y: serie.y,
+                                type: 'scatter',
+                                mode: 'lines+markers',
+                                name: serie.name,
+                                line: {
+                                    color: serie.color,
+                                    width: 2
+                                },
+                                marker: {
+                                    color: serie.color,
+                                    size: 6
+                                }
+                            });
                         }
-                    };
+                    }
                     
                     // Layout wykresu
                     const layout = {
                         title: {
-                            text: `Średnia prędkość – ${data.typ}, Kod ${data.kod}, Brygada ${data.brig}`,
+                            text: data.nazwa ? `${data.kod} ${data.nazwa}` : data.kod,
                             font: {
                                 size: 20,
                                 family: 'Roboto, sans-serif'
                             }
                         },
                         xaxis: {
-                            title: 'Dzień miesiąca',
+                            title: '',
                             showgrid: true,
                             gridcolor: '#e5e7eb',
                             dtick: 1
                         },
                         yaxis: {
-                            title: 'Wartość [m2/wh]',
+                            title: '',
                             showgrid: true,
                             gridcolor: '#e5e7eb'
                         },
-                        plot_bgcolor: '#f9fafb',
+                        plot_bgcolor: 'white',
                         paper_bgcolor: 'white',
-                        hovermode: 'closest'
+                        hovermode: 'x unified',
+                        barmode: 'group',
+                        showlegend: true,
+                        legend: {
+                            orientation: 'h',
+                            yanchor: 'bottom',
+                            y: -0.2,
+                            xanchor: 'center',
+                            x: 0.5
+                        }
                     };
                     
                     // Aktualizuj lub utwórz wykres
-                    Plotly.react(plotlyDiv, [trace], layout, {responsive: true});
+                    Plotly.react(plotlyDiv, traces, layout, {responsive: true});
                 } else {
                     console.error('Plotly nie jest załadowany');
                 }
@@ -181,10 +163,8 @@
             }
         }
         
-        // Obsługa zmiany dropdownów
-        typSelect.addEventListener('change', updateChart);
-        kodSelect.addEventListener('change', updateChart);
-        brygadaSelect.addEventListener('change', updateChart);
+        // Obsługa zmiany dropdown
+        maszynaSelect.addEventListener('change', updateChart);
     </script>
 </body>
 </html>
