@@ -8,6 +8,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -44,8 +47,10 @@
         
         <!-- Wykres -->
         <div class="bg-white rounded-lg shadow-md p-6">
-            <div id="chart" style="width: 100%; height: 600px;">
-                {{ plot_html|safe }}
+            <div id="chart-container" style="width: 100%; height: 600px;">
+                <div id="chart">
+                    {{ plot_html|safe }}
+                </div>
             </div>
         </div>
         
@@ -58,28 +63,53 @@
     </div>
     
     <script>
-        // Pobierz elementy
-        const maszynaSelect = document.getElementById('maszyna-select');
-        const chartDiv = document.getElementById('chart');
-        
-        // Funkcja aktualizująca wykres
-        async function updateChart() {
-            const kod = maszynaSelect.value;
+        // Poczekaj na załadowanie DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM załadowany');
             
-            if (!kod) {
-                console.log('Brak kodu maszyny');
+            // Pobierz elementy
+            const maszynaSelect = document.getElementById('maszyna-select');
+            const chartDiv = document.getElementById('chart');
+            
+            if (!maszynaSelect || !chartDiv) {
+                console.error('❌ Nie znaleziono elementów DOM');
                 return;
             }
             
-            try {
-                // Pobierz dane z API
-                const response = await fetch(`/api/series?kod=${encodeURIComponent(kod)}`);
-                const data = await response.json();
+            console.log('✅ Elementy DOM znalezione');
+            
+            // Obsługa zmiany dropdown
+            maszynaSelect.addEventListener('change', updateChart);
+            console.log('✅ Event listener dodany');
+            
+            // Funkcja aktualizująca wykres
+            async function updateChart() {
+                const kod = maszynaSelect.value;
+                console.log('🔄 Aktualizacja wykresu dla maszyny:', kod);
                 
-                // Sprawdź czy Plotly jest załadowany
-                if (typeof Plotly !== 'undefined') {
-                    // Znajdź div wykresu Plotly (wygenerowany przez Python)
-                    const plotlyDiv = chartDiv.querySelector('.plotly-graph-div') || chartDiv;
+                if (!kod) {
+                    console.log('❌ Brak kodu maszyny');
+                    return;
+                }
+                
+                try {
+                    // Pobierz dane z API
+                    console.log('📡 Pobieranie danych z API...');
+                    const response = await fetch(`/api/series?kod=${encodeURIComponent(kod)}`);
+                    const data = await response.json();
+                    console.log('✅ Otrzymano dane:', data);
+                    
+                    // Sprawdź czy Plotly jest załadowany
+                    if (typeof Plotly !== 'undefined') {
+                        // Znajdź div wykresu Plotly (wygenerowany przez Python)
+                        const plotlyDiv = chartDiv.querySelector('.plotly-graph-div');
+                        
+                        if (!plotlyDiv) {
+                            console.error('❌ Nie znaleziono div Plotly');
+                            return;
+                        }
+                        
+                        console.log('✅ Plotly div znaleziony');
                     
                     // Przygotuj dane dla Plotly
                     const traces = [];
@@ -162,18 +192,18 @@
                     };
                     
                     // Aktualizuj lub utwórz wykres
+                    console.log('📊 Aktualizacja wykresu Plotly...');
                     Plotly.react(plotlyDiv, traces, layout, {responsive: true});
+                    console.log('✅ Wykres zaktualizowany!');
                 } else {
-                    console.error('Plotly nie jest załadowany');
+                    console.error('❌ Plotly nie jest załadowany');
                 }
                 
-            } catch (error) {
-                console.error('Błąd pobierania danych:', error);
+                } catch (error) {
+                    console.error('❌ Błąd pobierania danych:', error);
+                }
             }
-        }
-        
-        // Obsługa zmiany dropdown
-        maszynaSelect.addEventListener('change', updateChart);
+        });
     </script>
 </body>
 </html>
