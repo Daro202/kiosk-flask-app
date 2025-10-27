@@ -125,60 +125,45 @@ def load_config():
         return {'admin_pin': '7456', 'rotation_interval': 30, 'refresh_interval': 300}
 
 def get_chart_data():
-    """Wczytaj dane z pliku Export.xlsx i przygotuj dla wykresów Chart.js"""
+    """Wczytaj dane z pliku Export.xlsx - dla kompatybilności (nie używane)"""
+    return []
+
+def get_chart_data_for_machine(kod='1310', start_day=1):
+    """Wczytaj dane dla konkretnej maszyny z Export.xlsx (7 dni od start_day)"""
     try:
         # Wczytaj dane z Export.xlsx
         df_long = load_long()
         
         if df_long.empty:
-            # Jeśli Export.xlsx nie istnieje, użyj starych danych
-            if os.path.exists('data.xlsx'):
-                df = pd.read_excel('data.xlsx', engine='openpyxl')
-                return df.to_dict('records')
-            elif os.path.exists('data.csv'):
-                df = pd.read_csv('data.csv')
-                return df.to_dict('records')
-            else:
-                raise FileNotFoundError
+            return []
         
-        # Agreguj dane dzienne dla wszystkich maszyn i brygad
-        # Zsumuj wartości dzienne dla każdego dnia (1-31)
-        df_dzienne = df_long[df_long['Typ'] == 'Dzienne'].copy()
+        # Filtruj dane dzienne dla wybranej maszyny (wszystkie brygady)
+        df_maszyna = df_long[(df_long['Typ'] == 'Dzienne') & (df_long['Kod'] == str(kod))].copy()
         
-        # Grupuj po dniu i sumuj wartości
-        dzienne_suma = df_dzienne.groupby('Dzien')['Wartosc'].sum().reset_index()
+        if df_maszyna.empty:
+            return []
         
-        # Podziel dni na tygodnie (4 tygodnie w miesiącu)
-        tygodnie = ['Tydzień 1', 'Tydzień 2', 'Tydzień 3', 'Tydzień 4']
-        tygodnie_data = []
+        # Grupuj po dniu i sumuj wartości dla wszystkich brygad
+        dzienne_suma = df_maszyna.groupby('Dzien')['Wartosc'].sum().reset_index()
         
-        for i in range(4):
-            start_day = i * 7 + 1
-            end_day = min((i + 1) * 7, 31)
-            
-            # Filtruj dane dla tego tygodnia
-            mask = (dzienne_suma['Dzien'] >= start_day) & (dzienne_suma['Dzien'] <= end_day)
-            tydzien_suma = dzienne_suma[mask]['Wartosc'].sum()
-            
-            # Przykładowe wartości innowacji i efektywności
-            tygodnie_data.append({
-                'miesiąc': tygodnie[i],
-                'produkcja': int(tydzien_suma) if tydzien_suma > 0 else 0,
-                'innowacje': 5 + i * 2,  # Przykładowe wartości
-                'efektywność': 85 + i * 2  # Przykładowe wartości
+        # Pobierz 7 dni od start_day
+        end_day = start_day + 6
+        mask = (dzienne_suma['Dzien'] >= start_day) & (dzienne_suma['Dzien'] <= end_day)
+        dni_data = dzienne_suma[mask].copy()
+        
+        # Przygotuj dane dla Chart.js
+        result = []
+        for _, row in dni_data.iterrows():
+            result.append({
+                'dzien': int(row['Dzien']),
+                'produkcja': int(row['Wartosc']) if row['Wartosc'] > 0 else 0
             })
         
-        return tygodnie_data
+        return result
         
     except Exception as e:
-        print(f"Błąd wczytywania danych wykresu: {e}")
-        # Zwróć przykładowe dane jeśli coś pójdzie nie tak
-        return [
-            {'miesiąc': 'Styczeń', 'produkcja': 120, 'innowacje': 5, 'efektywność': 85},
-            {'miesiąc': 'Luty', 'produkcja': 135, 'innowacje': 7, 'efektywność': 88},
-            {'miesiąc': 'Marzec', 'produkcja': 150, 'innowacje': 6, 'efektywność': 90},
-            {'miesiąc': 'Kwiecień', 'produkcja': 145, 'innowacje': 8, 'efektywność': 87}
-        ]
+        print(f"Błąd wczytywania danych dla maszyny {kod}: {e}")
+        return []
 
 def get_slide_images():
     """Pobierz listę zdjęć do pokazu slajdów"""
@@ -410,9 +395,35 @@ def upload_file():
 
 @app.route('/api/chart-data')
 def chart_data():
-    """Zwróć dane do wykresów"""
-    data = get_chart_data()
+    """Zwróć dane do wykresów dla konkretnej maszyny"""
+    kod = request.args.get('kod', '1310')
+    start_day = int(request.args.get('start_day', 1))
+    data = get_chart_data_for_machine(kod=kod, start_day=start_day)
     return jsonify(data)
+
+@app.route('/api/machines')
+def get_machines():
+    """Zwróć listę dostępnych maszyn z Export.xlsx"""
+    try:
+        df_long = load_long()
+        if df_long.empty:
+            return jsonify([])
+        
+        # Pobierz unikalne maszyny (kod + nazwa)
+        maszyny_df = df_long[['Kod', 'Nazwa']].drop_duplicates().sort_values('Kod')
+        maszyny = []
+        for _, row in maszyny_df.iterrows():
+            kod = row['Kod']
+            nazwa = row['Nazwa']
+            if nazwa and str(nazwa).strip():
+                maszyny.append({'kod': kod, 'label': f"{kod} {nazwa}"})
+            else:
+                maszyny.append({'kod': kod, 'label': kod})
+        
+        return jsonify(maszyny)
+    except Exception as e:
+        print(f"Błąd pobierania listy maszyn: {e}")
+        return jsonify([])
 
 @app.route('/api/slides')
 def slides():

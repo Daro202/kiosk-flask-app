@@ -41,7 +41,7 @@ async function initializeApp() {
     setInterval(updateCurrentTime, 1000);
     
     // Załaduj dane
-    await loadChartData();
+    await loadMachines();
     await loadInspirationsData();
     await loadSlidesData();
     
@@ -141,9 +141,38 @@ function resetRotationTimer() {
 
 // ==================== WYKRESY ====================
 
-async function loadChartData() {
+// Załaduj listę maszyn
+async function loadMachines() {
     try {
-        const response = await fetch('/api/chart-data');
+        const response = await fetch('/api/machines');
+        const machines = await response.json();
+        
+        const select = document.getElementById('machine-select');
+        if (select && machines.length > 0) {
+            select.innerHTML = '';
+            machines.forEach(machine => {
+                const option = document.createElement('option');
+                option.value = machine.kod;
+                option.textContent = machine.label;
+                select.appendChild(option);
+            });
+            
+            // Załaduj dane dla pierwszej maszyny
+            loadChartData(machines[0].kod);
+            
+            // Dodaj listener na zmianę maszyny
+            select.addEventListener('change', function() {
+                loadChartData(this.value);
+            });
+        }
+    } catch (error) {
+        console.error('Błąd ładowania listy maszyn:', error);
+    }
+}
+
+async function loadChartData(kod = '1310', startDay = 1) {
+    try {
+        const response = await fetch(`/api/chart-data?kod=${encodeURIComponent(kod)}&start_day=${startDay}`);
         const data = await response.json();
         
         if (data && data.length > 0) {
@@ -156,10 +185,10 @@ async function loadChartData() {
 
 function createCharts(data) {
     // Przygotuj dane
-    const labels = data.map(item => item.miesiąc || item.miesiac || '');
+    const labels = data.map(item => `Dzień ${item.dzien}`);
     const productionData = data.map(item => item.produkcja || 0);
-    const innovationData = data.map(item => item.innowacje || 0);
-    const efficiencyData = data.map(item => item.efektywność || item.efektywnosc || 0);
+    const innovationData = [5, 7, 6, 8, 10, 9, 11]; // Przykładowe
+    const efficiencyData = [85, 88, 90, 87, 92, 89, 94]; // Przykładowe
     
     // Wspólne opcje dla wykresów
     const commonOptions = {
@@ -424,8 +453,12 @@ async function loadContent() {
 async function refreshContent() {
     console.log('🔄 Automatyczne odświeżanie treści...');
     
-    // Przeładuj wszystkie dane
-    await loadChartData();
+    // Przeładuj dane dla aktualnie wybranej maszyny
+    const select = document.getElementById('machine-select');
+    if (select && select.value) {
+        await loadChartData(select.value);
+    }
+    
     await loadInspirationsData();
     await loadSlidesData();
     await loadContent();
