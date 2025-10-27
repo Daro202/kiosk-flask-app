@@ -141,6 +141,10 @@ function resetRotationTimer() {
 
 // ==================== WYKRESY ====================
 
+// Globalne zmienne dla wykresu
+let currentMachineCode = '1310';
+let currentStartDay = 1;
+
 // Załaduj listę maszyn
 async function loadMachines() {
     try {
@@ -148,6 +152,8 @@ async function loadMachines() {
         const machines = await response.json();
         
         const select = document.getElementById('machine-select');
+        const slider = document.getElementById('day-slider');
+        
         if (select && machines.length > 0) {
             select.innerHTML = '';
             machines.forEach(machine => {
@@ -158,15 +164,35 @@ async function loadMachines() {
             });
             
             // Załaduj dane dla pierwszej maszyny
-            loadChartData(machines[0].kod);
+            currentMachineCode = machines[0].kod;
+            loadChartData(currentMachineCode, currentStartDay);
             
             // Dodaj listener na zmianę maszyny
             select.addEventListener('change', function() {
-                loadChartData(this.value);
+                currentMachineCode = this.value;
+                loadChartData(currentMachineCode, currentStartDay);
+            });
+        }
+        
+        // Dodaj listener dla suwaka dni
+        if (slider) {
+            slider.addEventListener('input', function() {
+                currentStartDay = parseInt(this.value);
+                updateDayRangeLabel(currentStartDay);
+                loadChartData(currentMachineCode, currentStartDay);
             });
         }
     } catch (error) {
         console.error('Błąd ładowania listy maszyn:', error);
+    }
+}
+
+// Aktualizuj label z zakresem dni
+function updateDayRangeLabel(startDay) {
+    const label = document.getElementById('day-range-label');
+    if (label) {
+        const endDay = startDay + 6;
+        label.textContent = `Dni ${startDay}-${endDay}`;
     }
 }
 
