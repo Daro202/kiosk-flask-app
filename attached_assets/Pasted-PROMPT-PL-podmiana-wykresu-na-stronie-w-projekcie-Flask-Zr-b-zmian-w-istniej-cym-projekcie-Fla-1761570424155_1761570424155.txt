@@ -1,0 +1,87 @@
+PROMPT (PL) — podmiana wykresu na stronie w projekcie Flask
+
+Zrób zmianę w istniejącym projekcie Flask:
+
+Cel:
+Na nowej/podmienionej stronie /wykres wyświetl interaktywny wykres liniowy Plotly na podstawie pliku Export.xlsx (arkusz Eksport) z układem:
+
+Kol. A: Typ — tekst: Dzienne lub Narastające
+
+Kol. B: Kod — numer maszyny (np. 1310, 1329…)
+
+Kol. C: Brygada — A, B, C
+
+Kol. D…AH: dni miesiąca jako nagłówki kolumn: 1,2,3,…,31 (niektóre mogą być puste)
+
+Wymagania funkcjonalne:
+
+Wczytaj arkusz Pandas (read_excel). Upewnij się, że nagłówki dni są typu int (1..31).
+
+Przekształć dane do formy długiej (melt): kolumny stałe Typ, Kod, Brygada, zmienna Dzien (int), wartość Wartosc (float).
+
+Stwórz endpointy:
+
+GET /wykres – renderuje stronę z UI (dropdowny).
+
+GET /api/series?typ=Dzienne&kod=1310&brig=A – zwraca JSON:
+
+{"x":[1,2,...], "y":[...], "typ":"Dzienne", "kod":"1310", "brig":"A"}
+
+
+Dane mają być posortowane po Dzien.
+
+Strona /wykres (template Jinja templates/wykres.html) ma mieć 3 dropdowny:
+
+Typ (Dzienne / Narastające)
+
+Kod (unikalne kody z danych, posortowane rosnąco)
+
+Brygada (A, B, C)
+Po zmianie któregokolwiek dropdownu strona wywołuje /api/series (fetch) i przerysowuje wykres (Plotly).
+
+Domyślne ustawienia po wejściu na stronę: Typ= Dzienne, Kod = pierwszy dostępny, Brygada = A.
+
+Oś X = Dzien (1..31), oś Y = Wartosc. Tytuł: „Średnia prędkość – {{Typ}}, Kod {{Kod}}, Brygada {{Brygada}}”.
+
+Nie modyfikuj innych stron — dodaj tylko nowe pliki/route.
+
+Technicznie:
+
+Pliki do dodania/zmiany:
+
+app.py: dodaj funkcje load_long(), route /wykres, route /api/series.
+
+templates/wykres.html: HTML + JS (fetch + Plotly).
+
+Zależności w requirements.txt:
+flask, pandas, openpyxl, plotly
+
+Obsłuż sytuację, gdy arkusz nazywa się Eksport (a jeśli nie istnieje, spróbuj Export).
+
+Usuń wiersze z NaN w kolumnie Wartosc.
+
+Zamień typy: Kod i Brygada na str, Dzien na int.
+
+Oczekiwany kod (wysokopoziomowo):
+
+load_long():
+
+df = pd.read_excel("Export.xlsx", sheet_name="Eksport")  # fallback na "Export"
+# standaryzuj nagłówki dni -> int
+# melt do kolumn: Typ, Kod, Brygada, Dzien, Wartosc
+# dropna na Wartosc
+
+
+/api/series:
+
+pobiera query typ, kod, brig (z defaultami)
+
+filtruje long[(Typ==typ)&(Kod==kod)&(Brygada==brig)]
+
+sortuje po Dzien i zwraca listy x, y (JSON)
+
+templates/wykres.html:
+
+3 <select> z wartościami z Jinja (typy, kody, brygady)
+
+JS: fetch('/api/series?...') + Plotly.newPlot('chart', [{x,y,type:'scatter',mode:'lines+markers'}], layout)

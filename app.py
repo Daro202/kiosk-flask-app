@@ -162,6 +162,78 @@ def get_slide_images():
             })
     return images
 
+def load_long():
+    """
+    Wczytaj dane z pliku Export.xlsx i przekształć do formy długiej (long format)
+    Format: Typ, Kod, Brygada, Dzien (1-31), Wartosc
+    """
+    try:
+        # Spróbuj wczytać arkusz 'Eksport', 'Export' lub pierwszy dostępny
+        try:
+            df = pd.read_excel('Export.xlsx', sheet_name='Eksport', engine='openpyxl')
+        except ValueError:
+            try:
+                df = pd.read_excel('Export.xlsx', sheet_name='Export', engine='openpyxl')
+            except ValueError:
+                # Jeśli żaden nie istnieje, wczytaj pierwszy arkusz
+                df = pd.read_excel('Export.xlsx', sheet_name=0, engine='openpyxl')
+        
+        # Standaryzuj nazwy pierwszych trzech kolumn
+        df.columns = ['Typ', 'Kod', 'Brygada'] + list(df.columns[3:])
+        
+        # Przekształć nagłówki dni (kolumny 4+) na int
+        day_cols = []
+        for col in df.columns[3:]:
+            try:
+                day_cols.append(int(col))
+            except (ValueError, TypeError):
+                # Jeśli nie można przekonwertować na int, pomiń kolumnę
+                pass
+        
+        # Wybierz tylko kolumny podstawowe + dni jako int
+        valid_cols = ['Typ', 'Kod', 'Brygada'] + [c for c in df.columns[3:] if c in day_cols or str(c).isdigit()]
+        df = df[valid_cols]
+        
+        # Zmień nazwy kolumn dni na int
+        col_rename = {}
+        for col in df.columns[3:]:
+            try:
+                col_rename[col] = int(col)
+            except (ValueError, TypeError):
+                pass
+        df.rename(columns=col_rename, inplace=True)
+        
+        # Przekształć do formy długiej (melt)
+        id_vars = ['Typ', 'Kod', 'Brygada']
+        value_vars = [col for col in df.columns if isinstance(col, int) and 1 <= col <= 31]
+        
+        df_long = pd.melt(
+            df,
+            id_vars=id_vars,
+            value_vars=value_vars,
+            var_name='Dzien',
+            value_name='Wartosc'
+        )
+        
+        # Usuń wiersze z NaN w kolumnie Wartosc
+        df_long = df_long.dropna(subset=['Wartosc'])
+        
+        # Konwertuj typy
+        df_long['Typ'] = df_long['Typ'].astype(str)
+        df_long['Kod'] = df_long['Kod'].astype(str)
+        df_long['Brygada'] = df_long['Brygada'].astype(str)
+        df_long['Dzien'] = df_long['Dzien'].astype(int)
+        df_long['Wartosc'] = df_long['Wartosc'].astype(float)
+        
+        return df_long
+    
+    except FileNotFoundError:
+        # Jeśli plik nie istnieje, zwróć pusty DataFrame
+        return pd.DataFrame(columns=['Typ', 'Kod', 'Brygada', 'Dzien', 'Wartosc'])
+    except Exception as e:
+        print(f"Błąd wczytywania danych z Export.xlsx: {e}")
+        return pd.DataFrame(columns=['Typ', 'Kod', 'Brygada', 'Dzien', 'Wartosc'])
+
 # ==================== TRASY (ROUTES) ====================
 
 @app.route('/')
@@ -319,6 +391,109 @@ def get_content():
         'inspirations': get_inspirations(),
         'chart_data': get_chart_data(),
         'slides': get_slide_images()
+    })
+
+# ==================== WYKRESY PLOTLY ====================
+
+@app.route('/wykres')
+def wykres():
+    """Strona z interaktywnym wykresem Plotly"""
+    import plotly.graph_objects as go
+    from plotly.offline import plot
+    
+    df_long = load_long()
+    
+    # Pobierz unikalne wartości dla dropdownów
+    if not df_long.empty:
+        typy = sorted(df_long['Typ'].unique().tolist())
+        kody = sorted(df_long['Kod'].unique().tolist(), key=lambda x: int(x) if x.isdigit() else x)
+        brygady = sorted(df_long['Brygada'].unique().tolist())
+        
+        # Domyślne wartości
+        default_typ = typy[0] if typy else 'Dzienne'
+        default_kod = kody[0] if kody else ''
+        default_brygada = 'A' if 'A' in brygady else (brygady[0] if brygady else 'A')
+        
+        # Wygeneruj początkowy wykres
+        mask = (df_long['Typ'] == default_typ) & (df_long['Kod'] == default_kod) & (df_long['Brygada'] == default_brygada)
+        filtered = df_long[mask].copy().sort_values('Dzien')
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=filtered['Dzien'].tolist(),
+            y=filtered['Wartosc'].tolist(),
+            mode='lines+markers',
+            name=f'{default_typ} - {default_kod} - {default_brygada}',
+            line=dict(color='#FF6B35', width=3),
+            marker=dict(color='#FF6B35', size=8)
+        ))
+        
+        fig.update_layout(
+            title=f'Średnia prędkość – {default_typ}, Kod {default_kod}, Brygada {default_brygada}',
+            xaxis_title='Dzień miesiąca',
+            yaxis_title='Wartość [m2/wh]',
+            hovermode='closest',
+            plot_bgcolor='#f9fafb',
+            paper_bgcolor='white'
+        )
+        
+        # Generuj HTML wykresu z w pełni osadzoną biblioteką Plotly (inline)
+        plot_html = plot(fig, output_type='div', include_plotlyjs=True)
+        
+    else:
+        typy = ['Dzienne', 'Narastające']
+        kody = []
+        brygady = ['A', 'B', 'C']
+        default_typ = 'Dzienne'
+        default_kod = ''
+        default_brygada = 'A'
+        plot_html = '<div class="text-center text-gray-600 p-8">Brak danych - proszę dodać plik Export.xlsx</div>'
+    
+    return render_template('wykres.html',
+                         typy=typy,
+                         kody=kody,
+                         brygady=brygady,
+                         default_typ=default_typ,
+                         default_kod=default_kod,
+                         default_brygada=default_brygada,
+                         plot_html=plot_html)
+
+@app.route('/api/series')
+def api_series():
+    """Zwróć dane serii dla wykresu w formacie JSON"""
+    # Pobierz parametry z query string
+    typ = request.args.get('typ', 'Dzienne')
+    kod = request.args.get('kod', '')
+    brig = request.args.get('brig', 'A')
+    
+    df_long = load_long()
+    
+    if df_long.empty:
+        return jsonify({
+            'x': [],
+            'y': [],
+            'typ': typ,
+            'kod': kod,
+            'brig': brig
+        })
+    
+    # Filtruj dane
+    mask = (df_long['Typ'] == typ) & (df_long['Kod'] == kod) & (df_long['Brygada'] == brig)
+    filtered = df_long[mask].copy()
+    
+    # Sortuj po dniu
+    filtered = filtered.sort_values('Dzien')
+    
+    # Przygotuj dane do zwrócenia
+    x = filtered['Dzien'].tolist()
+    y = filtered['Wartosc'].tolist()
+    
+    return jsonify({
+        'x': x,
+        'y': y,
+        'typ': typ,
+        'kod': kod,
+        'brig': brig
     })
 
 # ==================== URUCHOMIENIE APLIKACJI ====================
