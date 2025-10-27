@@ -439,7 +439,7 @@ def wykres():
         kolory_slupki = {'A': '#0ea5e9', 'B': '#FF6B35', 'C': '#6b7280'}  # niebieski, pomarańczowy, szary
         kolory_linie = {'A': '#0284c7', 'B': '#f97316', 'C': '#4b5563'}  # ciemniejsze odcienie
         
-        # Dodaj słupki dla wartości dziennych (brygady A, B, C)
+        # Dodaj słupki dla wartości dziennych (brygady A, B, C) - oś Y lewa
         for brygada in ['A', 'B', 'C']:
             mask = (df_long['Typ'] == 'Dzienne') & (df_long['Kod'] == default_kod) & (df_long['Brygada'] == brygada)
             filtered = df_long[mask].copy().sort_values('Dzien')
@@ -452,10 +452,11 @@ def wykres():
                     marker_color=kolory_slupki.get(brygada, '#999999'),
                     text=filtered['Wartosc'].tolist(),
                     textposition='outside',
-                    texttemplate='%{text:.0f}'
+                    texttemplate='%{text:.0f}',
+                    yaxis='y'
                 ))
         
-        # Dodaj linie dla wartości narastających (brygady A, B, C)
+        # Dodaj linie dla wartości narastających (brygady A, B, C) - oś Y prawa
         for brygada in ['A', 'B', 'C']:
             mask = (df_long['Typ'] == 'Narastające') & (df_long['Kod'] == default_kod) & (df_long['Brygada'] == brygada)
             filtered = df_long[mask].copy().sort_values('Dzien')
@@ -467,7 +468,8 @@ def wykres():
                     mode='lines+markers',
                     name=f'Narastająco {brygada}',
                     line=dict(color=kolory_linie.get(brygada, '#666666'), width=2),
-                    marker=dict(color=kolory_linie.get(brygada, '#666666'), size=6)
+                    marker=dict(color=kolory_linie.get(brygada, '#666666'), size=6),
+                    yaxis='y2'
                 ))
         
         # Dodaj linie Cel 0 i Cel 100 (opcjonalnie)
@@ -476,7 +478,6 @@ def wykres():
         fig.update_layout(
             title=default_nazwa,
             xaxis_title='',
-            yaxis_title='',
             hovermode='x unified',
             plot_bgcolor='white',
             paper_bgcolor='white',
@@ -495,8 +496,16 @@ def wykres():
                 dtick=1
             ),
             yaxis=dict(
+                title='',
                 showgrid=True,
-                gridcolor='#e5e7eb'
+                gridcolor='#e5e7eb',
+                side='left'
+            ),
+            yaxis2=dict(
+                title='',
+                showgrid=False,
+                overlaying='y',
+                side='right'
             )
         )
         
@@ -541,7 +550,7 @@ def api_series():
     kolory_slupki = {'A': '#0ea5e9', 'B': '#FF6B35', 'C': '#6b7280'}
     kolory_linie = {'A': '#0284c7', 'B': '#f97316', 'C': '#4b5563'}
     
-    # Słupki dla wartości dziennych (brygady A, B, C)
+    # Słupki dla wartości dziennych (brygady A, B, C) - oś Y lewa
     for brygada in ['A', 'B', 'C']:
         mask = (df_long['Typ'] == 'Dzienne') & (df_long['Kod'] == kod) & (df_long['Brygada'] == brygada)
         filtered = df_long[mask].copy().sort_values('Dzien')
@@ -552,10 +561,11 @@ def api_series():
                 'name': brygada,
                 'x': filtered['Dzien'].tolist(),
                 'y': filtered['Wartosc'].tolist(),
-                'color': kolory_slupki.get(brygada, '#999999')
+                'color': kolory_slupki.get(brygada, '#999999'),
+                'yaxis': 'y'
             })
     
-    # Linie dla wartości narastających (brygady A, B, C)
+    # Linie dla wartości narastających (brygady A, B, C) - oś Y prawa
     for brygada in ['A', 'B', 'C']:
         mask = (df_long['Typ'] == 'Narastające') & (df_long['Kod'] == kod) & (df_long['Brygada'] == brygada)
         filtered = df_long[mask].copy().sort_values('Dzien')
@@ -566,7 +576,8 @@ def api_series():
                 'name': f'Narastająco {brygada}',
                 'x': filtered['Dzien'].tolist(),
                 'y': filtered['Wartosc'].tolist(),
-                'color': kolory_linie.get(brygada, '#666666')
+                'color': kolory_linie.get(brygada, '#666666'),
+                'yaxis': 'y2'
             })
     
     return jsonify({

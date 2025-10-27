@@ -97,7 +97,8 @@
                                 },
                                 text: serie.y,
                                 textposition: 'outside',
-                                texttemplate: '%{text:.0f}'
+                                texttemplate: '%{text:.0f}',
+                                yaxis: serie.yaxis || 'y'
                             });
                         } else if (serie.type === 'line') {
                             traces.push({
@@ -113,7 +114,8 @@
                                 marker: {
                                     color: serie.color,
                                     size: 6
-                                }
+                                },
+                                yaxis: serie.yaxis || 'y'
                             });
                         }
                     }
@@ -136,7 +138,14 @@
                         yaxis: {
                             title: '',
                             showgrid: true,
-                            gridcolor: '#e5e7eb'
+                            gridcolor: '#e5e7eb',
+                            side: 'left'
+                        },
+                        yaxis2: {
+                            title: '',
+                            showgrid: false,
+                            overlaying: 'y',
+                            side: 'right'
                         },
                         plot_bgcolor: 'white',
                         paper_bgcolor: 'white',
