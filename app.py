@@ -217,16 +217,20 @@ def load_long():
                 # Jeśli żaden nie istnieje, wczytaj pierwszy arkusz
                 df = pd.read_excel('Export.xlsx', sheet_name=0, engine='openpyxl')
         
-        # Sprawdź czy istnieje kolumna Nazwa
-        has_nazwa = 'Nazwa' in df.columns or len(df.columns) >= 4
-        
-        if has_nazwa and len(df.columns) >= 4:
-            # Standaryzuj nazwy pierwszych czterech kolumn
+        # Sprawdź czy kolumny to 'Unnamed' - wtedy brak nagłówków
+        if str(df.columns[0]).startswith('Unnamed'):
+            # Brak nagłówków - pierwsze 3 kolumny to Typ, Kod, Brygada (bez Nazwa)
+            df.columns = ['Typ', 'Kod', 'Brygada'] + list(df.columns[3:])
+            df['Nazwa'] = ''  # Dodaj pustą kolumnę Nazwa
+            first_day_col = 3
+            id_vars = ['Typ', 'Kod', 'Nazwa', 'Brygada']
+        elif 'Nazwa' in df.columns or len(df.columns) >= 4:
+            # Format z kolumną Nazwa
             df.columns = ['Typ', 'Kod', 'Nazwa', 'Brygada'] + list(df.columns[4:])
             first_day_col = 4
             id_vars = ['Typ', 'Kod', 'Nazwa', 'Brygada']
         else:
-            # Stary format bez nazwy
+            # Format bez nazwy (Typ, Kod, Brygada)
             df.columns = ['Typ', 'Kod', 'Brygada'] + list(df.columns[3:])
             df['Nazwa'] = ''  # Dodaj pustą kolumnę Nazwa
             first_day_col = 3
