@@ -174,7 +174,7 @@ def get_chart_data_for_machine(kod='1310', start_day=1):
             if not filtered.empty:
                 series_data.append({
                     'type': 'line',
-                    'name': f'Narastająco {brygada}',
+                    'name': brygada,
                     'x': filtered['Dzien'].tolist(),
                     'y': filtered['Wartosc'].tolist(),
                     'color': kolory_linie.get(brygada, '#666666')
