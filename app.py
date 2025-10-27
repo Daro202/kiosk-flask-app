@@ -129,41 +129,62 @@ def get_chart_data():
     return []
 
 def get_chart_data_for_machine(kod='1310', start_day=1):
-    """Wczytaj dane dla konkretnej maszyny z Export.xlsx (7 dni od start_day)"""
+    """Wczytaj dane dla konkretnej maszyny z Export.xlsx - osobno dla każdej brygady (A, B, C) dzienne i narastające"""
     try:
         # Wczytaj dane z Export.xlsx
         df_long = load_long()
         
         if df_long.empty:
-            return []
+            return {'series': []}
         
-        # Filtruj dane dzienne dla wybranej maszyny (wszystkie brygady)
-        df_maszyna = df_long[(df_long['Typ'] == 'Dzienne') & (df_long['Kod'] == str(kod))].copy()
+        # Filtruj dane dla wybranej maszyny
+        df_maszyna = df_long[df_long['Kod'] == str(kod)].copy()
         
         if df_maszyna.empty:
-            return []
-        
-        # Grupuj po dniu i sumuj wartości dla wszystkich brygad
-        dzienne_suma = df_maszyna.groupby('Dzien')['Wartosc'].sum().reset_index()
+            return {'series': []}
         
         # Pobierz 7 dni od start_day
         end_day = start_day + 6
-        mask = (dzienne_suma['Dzien'] >= start_day) & (dzienne_suma['Dzien'] <= end_day)
-        dni_data = dzienne_suma[mask].copy()
         
-        # Przygotuj dane dla Chart.js
-        result = []
-        for _, row in dni_data.iterrows():
-            result.append({
-                'dzien': int(row['Dzien']),
-                'produkcja': int(row['Wartosc']) if row['Wartosc'] > 0 else 0
-            })
+        series_data = []
+        kolory_slupki = {'A': '#0ea5e9', 'B': '#FF6B35', 'C': '#6b7280'}
+        kolory_linie = {'A': '#0284c7', 'B': '#f97316', 'C': '#4b5563'}
         
-        return result
+        # Słupki dla wartości dziennych (brygady A, B, C)
+        for brygada in ['A', 'B', 'C']:
+            mask = (df_maszyna['Typ'] == 'Dzienne') & (df_maszyna['Brygada'] == brygada) & \
+                   (df_maszyna['Dzien'] >= start_day) & (df_maszyna['Dzien'] <= end_day)
+            filtered = df_maszyna[mask].copy().sort_values('Dzien')
+            
+            if not filtered.empty:
+                series_data.append({
+                    'type': 'bar',
+                    'name': brygada,
+                    'x': filtered['Dzien'].tolist(),
+                    'y': filtered['Wartosc'].tolist(),
+                    'color': kolory_slupki.get(brygada, '#999999')
+                })
+        
+        # Linie dla wartości narastających (brygady A, B, C)
+        for brygada in ['A', 'B', 'C']:
+            mask = (df_maszyna['Typ'] == 'Narastające') & (df_maszyna['Brygada'] == brygada) & \
+                   (df_maszyna['Dzien'] >= start_day) & (df_maszyna['Dzien'] <= end_day)
+            filtered = df_maszyna[mask].copy().sort_values('Dzien')
+            
+            if not filtered.empty:
+                series_data.append({
+                    'type': 'line',
+                    'name': f'Narastająco {brygada}',
+                    'x': filtered['Dzien'].tolist(),
+                    'y': filtered['Wartosc'].tolist(),
+                    'color': kolory_linie.get(brygada, '#666666')
+                })
+        
+        return {'series': series_data}
         
     except Exception as e:
         print(f"Błąd wczytywania danych dla maszyny {kod}: {e}")
-        return []
+        return {'series': []}
 
 def get_slide_images():
     """Pobierz listę zdjęć do pokazu slajdów"""

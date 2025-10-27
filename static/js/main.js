@@ -175,7 +175,8 @@ async function loadChartData(kod = '1310', startDay = 1) {
         const response = await fetch(`/api/chart-data?kod=${encodeURIComponent(kod)}&start_day=${startDay}`);
         const data = await response.json();
         
-        if (data && data.length > 0) {
+        // Dane w formacie {series: [...]}
+        if (data && data.series && data.series.length > 0) {
             createCharts(data);
         }
     } catch (error) {
@@ -183,10 +184,111 @@ async function loadChartData(kod = '1310', startDay = 1) {
     }
 }
 
+function createCombinedChart(series) {
+    const ctxProduction = document.getElementById('productionChart');
+    if (!ctxProduction) return;
+    
+    // Zniszcz istniejący wykres jeśli istnieje
+    if (charts.production) {
+        charts.production.destroy();
+    }
+    
+    // Zbierz wszystkie dni z serii
+    const allDays = new Set();
+    series.forEach(s => s.x.forEach(day => allDays.add(day)));
+    const labels = Array.from(allDays).sort((a, b) => a - b).map(d => `Dzień ${d}`);
+    
+    // Przygotuj datasety dla Chart.js
+    const datasets = [];
+    
+    // Dodaj słupki (type: 'bar')
+    series.filter(s => s.type === 'bar').forEach(s => {
+        const dataMap = {};
+        s.x.forEach((day, i) => {
+            dataMap[day] = s.y[i];
+        });
+        
+        datasets.push({
+            type: 'bar',
+            label: s.name,
+            data: Array.from(allDays).sort((a, b) => a - b).map(day => dataMap[day] || 0),
+            backgroundColor: s.color + 'CC',
+            borderColor: s.color,
+            borderWidth: 1,
+            yAxisID: 'y'
+        });
+    });
+    
+    // Dodaj linie (type: 'line')
+    series.filter(s => s.type === 'line').forEach(s => {
+        const dataMap = {};
+        s.x.forEach((day, i) => {
+            dataMap[day] = s.y[i];
+        });
+        
+        datasets.push({
+            type: 'line',
+            label: s.name,
+            data: Array.from(allDays).sort((a, b) => a - b).map(day => dataMap[day] || null),
+            borderColor: s.color,
+            backgroundColor: s.color + '33',
+            borderWidth: 2,
+            tension: 0.1,
+            yAxisID: 'y2'
+        });
+    });
+    
+    // Utwórz wykres z dwiema osiami Y
+    charts.production = new Chart(ctxProduction, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    title: {
+                        display: false
+                    }
+                },
+                y2: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
 function createCharts(data) {
-    // Przygotuj dane
-    const labels = data.map(item => `Dzień ${item.dzien}`);
-    const productionData = data.map(item => item.produkcja || 0);
+    // Sprawdź czy dane mają format z seriami (nowy format)
+    if (data.series && Array.isArray(data.series)) {
+        createCombinedChart(data.series);
+    }
+    
     const innovationData = [5, 7, 6, 8, 10, 9, 11]; // Przykładowe
     const efficiencyData = [85, 88, 90, 87, 92, 89, 94]; // Przykładowe
     
@@ -214,24 +316,7 @@ function createCharts(data) {
         }
     };
     
-    // Wykres produkcji (słupkowy)
-    const ctxProduction = document.getElementById('productionChart');
-    if (ctxProduction) {
-        charts.production = new Chart(ctxProduction, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Produkcja',
-                    data: productionData,
-                    backgroundColor: 'rgba(255, 107, 53, 0.8)',
-                    borderColor: 'rgba(255, 107, 53, 1)',
-                    borderWidth: 2
-                }]
-            },
-            options: commonOptions
-        });
-    }
+    const labels = ['Dzień 1', 'Dzień 2', 'Dzień 3', 'Dzień 4', 'Dzień 5', 'Dzień 6', 'Dzień 7'];
     
     // Wykres innowacji (liniowy)
     const ctxInnovation = document.getElementById('innovationChart');
