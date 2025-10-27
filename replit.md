@@ -10,6 +10,11 @@ Aplikacja webowa Flask działająca jako firmowy kiosk do wyświetlania dashboar
 27 października 2025
 
 ### Ostatnie zmiany
+- [2025-10-27 10:30] Dodano obsługę plików Excel (.xlsx) dla danych wykresów
+  - Aplikacja priorytetowo wczytuje dane z data.xlsx
+  - Fallback do data.csv jeśli Excel nie istnieje
+  - Biblioteka openpyxl zainstalowana
+  - Dokumentacja zaktualizowana
 - [2025-10-27] Implementacja kompletnej aplikacji kiosku z wszystkimi funkcjami
 - Backend Flask z bazą danych SQLite
 - Panel administracyjny chroniony PIN-em (7456)
@@ -21,17 +26,19 @@ Aplikacja webowa Flask działająca jako firmowy kiosk do wyświetlania dashboar
 ## Architektura Projektu
 
 ### Technologie
-- **Backend**: Python 3.11, Flask, Waitress, Pandas
+- **Backend**: Python 3.11, Flask, Waitress, Pandas, openpyxl
 - **Frontend**: HTML5, Tailwind CSS, Chart.js, Vanilla JavaScript
 - **Baza danych**: SQLite3
 - **Serwer produkcyjny**: Waitress
+- **Format danych**: Excel (.xlsx) lub CSV
 
 ### Struktura katalogów
 ```
 .
 ├── app.py                  # Główna aplikacja Flask
 ├── config.json             # Konfiguracja (PIN, interwały)
-├── data.csv                # Dane do wykresów
+├── data.xlsx               # Dane wykresów (Excel) - PRIORYTET
+├── data.csv                # Dane wykresów (CSV) - FALLBACK
 ├── kiosk.db                # Baza danych SQLite (tworzona automatycznie)
 ├── templates/
 │   ├── index.html          # Dashboard główny
