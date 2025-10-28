@@ -150,6 +150,17 @@
                         }
                     }
                     
+                    // Oblicz maksymalną wartość ze wszystkich danych dla synchronizacji osi
+                    let maxValue = 0;
+                    for (const trace of traces) {
+                        const traceMax = Math.max(...trace.y);
+                        if (traceMax > maxValue) {
+                            maxValue = traceMax;
+                        }
+                    }
+                    // Dodaj 10% marginesu na górze
+                    maxValue = Math.ceil(maxValue * 1.1);
+                    
                     // Layout wykresu
                     const layout = {
                         title: {
@@ -169,13 +180,15 @@
                             title: 'Produkcja dzienna',
                             showgrid: true,
                             gridcolor: '#e5e7eb',
-                            side: 'left'
+                            side: 'left',
+                            range: [0, maxValue]
                         },
                         yaxis2: {
                             title: 'Produkcja narastająca',
                             showgrid: false,
                             overlaying: 'y',
-                            side: 'right'
+                            side: 'right',
+                            range: [0, maxValue]
                         },
                         plot_bgcolor: 'white',
                         paper_bgcolor: 'white',

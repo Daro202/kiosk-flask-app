@@ -571,6 +571,14 @@ def wykres():
         # Dodaj linie Cel 0 i Cel 100 (opcjonalnie)
         # Na razie pominięte - można dodać później jeśli potrzebne
         
+        # Oblicz maksymalną wartość ze wszystkich danych dla synchronizacji osi Y
+        mask_all = df_long['Kod'] == default_kod
+        if mask_all.any():
+            max_value = df_long[mask_all]['Wartosc'].max()
+            max_value = int(max_value * 1.1)  # Dodaj 10% marginesu
+        else:
+            max_value = 10000  # Wartość domyślna
+        
         fig.update_layout(
             title=default_nazwa,
             xaxis_title='',
@@ -595,13 +603,15 @@ def wykres():
                 title='Produkcja dzienna',
                 showgrid=True,
                 gridcolor='#e5e7eb',
-                side='left'
+                side='left',
+                range=[0, max_value]
             ),
             yaxis2=dict(
                 title='Produkcja narastająca',
                 showgrid=False,
                 overlaying='y',
-                side='right'
+                side='right',
+                range=[0, max_value]
             )
         )
         
