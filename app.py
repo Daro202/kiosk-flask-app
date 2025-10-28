@@ -592,13 +592,13 @@ def wykres():
                 dtick=1
             ),
             yaxis=dict(
-                title='',
+                title='Produkcja dzienna',
                 showgrid=True,
                 gridcolor='#e5e7eb',
                 side='left'
             ),
             yaxis2=dict(
-                title='',
+                title='Produkcja narastająca',
                 showgrid=False,
                 overlaying='y',
                 side='right'
