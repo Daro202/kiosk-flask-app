@@ -418,6 +418,33 @@ def upload_file():
     
     return jsonify({'error': 'Niedozwolony typ pliku'}), 400
 
+@app.route('/api/upload-excel', methods=['POST'])
+def upload_excel():
+    """Upload pliku Excel (Export.xlsx)"""
+    if not session.get('authenticated'):
+        return jsonify({'error': 'Brak autoryzacji'}), 401
+    
+    if 'excel_file' not in request.files:
+        return jsonify({'error': 'Brak pliku'}), 400
+    
+    file = request.files['excel_file']
+    if file.filename == '' or file.filename is None:
+        return jsonify({'error': 'Nie wybrano pliku'}), 400
+    
+    # Sprawdź czy to plik Excel
+    if file and file.filename and (file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
+        # Zapisz jako Export.xlsx (zastąp istniejący)
+        filepath = 'Export.xlsx'
+        file.save(filepath)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Plik Export.xlsx został zaktualizowany',
+            'filename': 'Export.xlsx'
+        })
+    
+    return jsonify({'error': 'Niedozwolony typ pliku - wymagany plik .xlsx lub .xls'}), 400
+
 @app.route('/api/chart-data')
 def chart_data():
     """Zwróć dane do wykresów dla konkretnej maszyny"""
