@@ -264,6 +264,17 @@ function createCombinedChart(series) {
         });
     });
     
+    // Oblicz maksymalną wartość ze wszystkich danych dla synchronizacji osi
+    let maxValue = 0;
+    series.forEach(s => {
+        const seriesMax = Math.max(...s.y);
+        if (seriesMax > maxValue) {
+            maxValue = seriesMax;
+        }
+    });
+    // Dodaj 10% marginesu na górze
+    maxValue = Math.ceil(maxValue * 1.1);
+    
     // Utwórz wykres z dwiema osiami Y
     charts.production = new Chart(ctxProduction, {
         type: 'bar',
@@ -286,8 +297,10 @@ function createCombinedChart(series) {
                     display: true,
                     position: 'left',
                     beginAtZero: true,
+                    max: maxValue,
                     title: {
-                        display: false
+                        display: true,
+                        text: 'Produkcja dzienna'
                     }
                 },
                 y2: {
@@ -295,8 +308,13 @@ function createCombinedChart(series) {
                     display: true,
                     position: 'right',
                     beginAtZero: true,
+                    max: maxValue,
                     grid: {
                         drawOnChartArea: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Produkcja narastająca'
                     }
                 },
                 x: {
