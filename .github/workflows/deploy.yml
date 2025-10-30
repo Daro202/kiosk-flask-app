@@ -1,0 +1,24 @@
+name: Deploy to Hostinger (auto pull on push)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          script: |
+            set -e
+            cd /srv/kiosk-app
+            git fetch --all
+            git reset --hard origin/main
+            . .venv/bin/activate
+            pip install -r requirements.txt
+            systemctl restart kioskapp
