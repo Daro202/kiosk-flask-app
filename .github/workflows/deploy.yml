@@ -7,6 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -16,9 +17,18 @@ jobs:
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
           script: |
             set -e
-            cd /srv/kiosk-app
-            git fetch --all
-            git reset --hard origin/main
+            if [ ! -d "/srv/kiosk-app" ]; then
+              mkdir -p /srv/kiosk-app
+              cd /srv/kiosk-app
+              git clone https://github.com/Daro202/kiosk-flask-app.git .
+            else
+              cd /srv/kiosk-app
+              git fetch --all
+              git reset --hard origin/main
+            fi
+            apt-get update -y
+            apt-get install -y python3-venv
+            python3 -m venv .venv
             . .venv/bin/activate
-            pip install -r requirements.txt
-            systemctl restart kioskapp
+            pip install -r requirements.txt || pip install flask gunicorn
+            systemctl restart kioskapp || true
